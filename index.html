@@ -1,806 +1,380 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>经典扫雷 · Windows 风格</title>
-  <style>
-    /* ========== 全局重置与字体 ========== */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      background: #008080; /* 经典Win95桌面色 */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      font-family: 'Microsoft YaHei', 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
-      padding: 20px;
-      margin: 0;
-    }
-
-    /* 主游戏容器：像素风窗口 */
-    .game-container {
-      background: #c0c0c0;
-      padding: 8px;
-      border: 3px solid;
-      border-color: #ffffff #808080 #808080 #ffffff;
-      box-shadow: 2px 2px 0 #000000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 600px;
-      width: fit-content;
-      margin: auto;
-    }
-
-    /* 标题栏 */
-    .title-bar {
-      background: #000080;
-      color: white;
-      font-weight: bold;
-      padding: 4px 6px;
-      font-size: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
-    }
-
-    /* 状态面板：雷数、重置按钮、计时器 */
-    .status-panel {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      background: #c0c0c0;
-      padding: 6px 0;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .counter {
-      background: black;
-      color: red;
-      font-family: 'Courier New', monospace;
-      font-size: 1.8rem;
-      font-weight: bold;
-      padding: 2px 8px;
-      border: 3px solid;
-      border-color: #808080 #ffffff #ffffff #808080;
-      min-width: 70px;
-      text-align: center;
-      line-height: 1.2;
-      letter-spacing: 1px;
-    }
-
-    .reset-btn {
-      background: #c0c0c0;
-      border: 3px solid;
-      border-color: #ffffff #808080 #808080 #ffffff;
-      font-size: 1.8rem;
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-weight: bold;
-      color: black;
-      transition: all 0.05s ease;
-      user-select: none;
-      touch-action: manipulation;
-    }
-
-    .reset-btn:active {
-      border-color: #808080 #ffffff #ffffff #808080;
-      transform: scale(0.96);
-    }
-
-    /* 网格容器 */
-    .grid-wrapper {
-      background: #c0c0c0;
-      border: 3px solid;
-      border-color: #808080 #ffffff #ffffff #808080;
-      padding: 4px;
-      margin: 8px 0;
-      display: flex;
-      justify-content: center;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(9, 1fr);
-      gap: 1px;
-      background: #808080;
-      border: 1px solid #808080;
-      width: 100%;
-    }
-
-    /* 单元格样式 */
-    .cell {
-      aspect-ratio: 1 / 1;
-      width: 100%;
-      min-width: 30px;
-      max-width: 50px;
-      background: #c0c0c0;
-      border: 3px solid;
-      border-color: #ffffff #808080 #808080 #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-family: 'Arial', sans-serif;
-      cursor: pointer;
-      user-select: none;
-      touch-action: manipulation;
-      font-size: clamp(1rem, 4vw, 1.5rem);
-      transition: none;
-      box-sizing: content-box;
-    }
-
-    /* 已挖开的格子 */
-    .cell.revealed {
-      border: 1px solid #808080;
-      background: #c0c0c0;
-      border-color: #808080;
-    }
-
-    /* 数字颜色仿Windows */
-    .color1 { color: #0000ff; } /* 1 蓝色 */
-    .color2 { color: #008000; } /* 2 绿色 */
-    .color3 { color: #ff0000; } /* 3 红色 */
-    .color4 { color: #000080; } /* 4 深蓝 */
-    .color5 { color: #800000; } /* 5 深红 */
-    .color6 { color: #008080; } /* 6 青色 */
-    .color7 { color: #000000; } /* 7 黑色 */
-    .color8 { color: #808080; } /* 8 灰色 */
-
-    /* 旗子与地雷使用Unicode */
-    .flag-icon, .mine-icon {
-      font-size: 1.2rem;
-      line-height: 1;
-    }
-
-    /* 积分显示 */
-    .score-area {
-      background: #c0c0c0;
-      border: 2px solid;
-      border-color: #808080 #ffffff #ffffff #808080;
-      padding: 4px 12px;
-      margin-top: 4px;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-    }
-
-    .score-value {
-      background: black;
-      color: #00ff00;
-      font-family: 'Courier New', monospace;
-      padding: 2px 10px;
-      font-size: 1.2rem;
-      border: 1px inset #808080;
-    }
-
-    /* 触控模式提示（小屏显示切换按钮） */
-    .touch-mode-toggle {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      font-size: 0.8rem;
-      background: #c0c0c0;
-      padding: 2px 8px;
-      border: 2px solid;
-      border-color: #ffffff #808080 #808080 #ffffff;
-      margin-left: auto;
-    }
-
-    .mode-btn {
-      background: #c0c0c0;
-      border: 2px solid;
-      border-color: #ffffff #808080 #808080 #ffffff;
-      padding: 2px 8px;
-      cursor: pointer;
-      font-weight: bold;
-      touch-action: manipulation;
-    }
-
-    .mode-btn.active-mode {
-      border-color: #808080 #ffffff #ffffff #808080;
-      background: #d4d0c8;
-    }
-
-    @media (max-width: 500px) {
-      .cell {
-        min-width: 30px;
-        max-width: 45px;
-        font-size: 1rem;
-      }
-      .counter {
-        font-size: 1.4rem;
-        min-width: 55px;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>智谱 AI 问答</title>
+<style>
+  :root {
+    --bg: #eef1f6;
+    --panel: #ffffff;
+    --primary: #3b5bdb;
+    --primary-dark: #2f4bbf;
+    --text: #212529;
+    --muted: #868e96;
+    --border: #e4e8f0;
+    --danger: #e03131;
+    --warn-bg: #fff3bf;
+    --warn-fg: #e67700;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+  }
+  .wrap {
+    width: 100%;
+    max-width: 820px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, .08);
+  }
+  header {
+    padding: 14px 20px;
+    color: #fff;
+    background: linear-gradient(135deg, #4263eb 0%, #7048e8 50%, #4263eb 100%);
+    background-size: 200% 200%;
+    animation: gradientFlow 9s ease infinite;
+  }
+  @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+  header .sub {
+    margin: 4px 0 0;
+    font-size: .8rem;
+    opacity: .9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .conn-dot { width: 9px; height: 9px; border-radius: 50%; background: #adb5bd; flex: none; transition: background .2s; }
+  .conn-dot.ok { background: #40c057; }
+  .conn-dot.off { background: #fa5252; }
+  .conn-dot.wait { background: #ffd43b; animation: pulse 1s ease infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  .conn-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 16px;
+    font-size: .85rem;
+    background: var(--warn-bg);
+    color: var(--warn-fg);
+    border-bottom: 1px solid #ffe066;
+    animation: slideDown .25s ease-out;
+  }
+  .conn-banner.hidden { display: none; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } }
+  .conn-banner button {
+    border: 1px solid var(--warn-fg);
+    background: transparent;
+    color: var(--warn-fg);
+    border-radius: 6px;
+    padding: 2px 12px;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .conn-banner button:hover { background: var(--warn-fg); color: #fff; }
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.6;
+    font-size: .95rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    animation: pop .28s cubic-bezier(.22, .9, .35, 1.18);
+    transform-origin: bottom left;
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--primary);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    transform-origin: bottom right;
+  }
+  .msg.error {
+    align-self: center;
+    background: #fff5f5;
+    color: var(--danger);
+    border: 1px solid #ffc9c9;
+    font-size: .85rem;
+    max-width: 92%;
+  }
+  .msg.typing { display: flex; align-items: center; padding: 14px 18px; }
+  .msg.typing .dot {
+    width: 7px;
+    height: 7px;
+    margin: 0 3px;
+    border-radius: 50%;
+    background: #adb5bd;
+    animation: bounce 1.2s ease infinite;
+  }
+  .msg.typing .dot:nth-child(2) { animation-delay: .18s; }
+  .msg.typing .dot:nth-child(3) { animation-delay: .36s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-5px); opacity: 1; } }
+  .input-bar {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .input-bar textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: .95rem;
+    max-height: 140px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input-bar textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 91, 219, .15); }
+  .input-bar button {
+    border: 0;
+    background: var(--primary);
+    color: #fff;
+    padding: 0 22px;
+    border-radius: 10px;
+    font-size: .95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, transform .1s, box-shadow .15s, opacity .15s;
+  }
+  .input-bar button:hover:not(:disabled) { background: var(--primary-dark); box-shadow: 0 3px 10px rgba(59, 91, 219, .35); }
+  .input-bar button:active:not(:disabled) { transform: translateY(1px); }
+  .input-bar button:disabled { opacity: .55; cursor: not-allowed; }
+  .input-bar button.loading::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 7px;
+    border: 2px solid rgba(255, 255, 255, .4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status {
+    margin: 0;
+    padding: 0 16px 10px;
+    font-size: .8rem;
+    color: var(--muted);
+    text-align: center;
+    min-height: 1.2em;
+    transition: color .2s;
+  }
+  .status.warn { color: #e8590c; }
+  .status.err { color: var(--danger); }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .chat { scroll-behavior: auto; }
+  }
+</style>
 </head>
 <body>
-<div class="game-container">
-  <div class="title-bar">💣 经典扫雷 · Windows 风格</div>
-
-  <!-- 状态栏：剩余雷数、重置、计时 -->
-  <div class="status-panel">
-    <div class="counter" id="mine-counter">010</div>
-    <button class="reset-btn" id="reset-button" title="新游戏">😊</button>
-    <div class="counter" id="timer-display">000</div>
+<div class="wrap">
+  <header>
+    <h1>智谱 AI 问答</h1>
+    <p class="sub">
+      <span class="conn-dot wait" id="conn-dot"></span>
+      <span id="conn-text">连接中…</span>
+      <span>· 每分钟最多 5 次提问</span>
+    </p>
+  </header>
+  <div class="conn-banner hidden" id="conn-banner">
+    <span>后端连接断开，请确认服务已启动</span>
+    <button type="button" id="retry-btn">重试连接</button>
   </div>
-
-  <!-- 网格区域 -->
-  <div class="grid-wrapper">
-    <div class="grid" id="minesweeper-grid"></div>
-  </div>
-
-  <!-- 触控辅助：右键模式切换（移动端友好） -->
-  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 4px;">
-    <div class="score-area">
-      <span>⭐ 积分</span>
-      <span class="score-value" id="score-display">0</span>
-    </div>
-    <div class="touch-mode-toggle" id="touch-toggle-area">
-      <span style="margin-right: 4px;">🖐️</span>
-      <button class="mode-btn active-mode" id="mode-left-btn">左键</button>
-      <button class="mode-btn" id="mode-right-btn">右键</button>
-    </div>
-  </div>
-  <div style="font-size:0.7rem; color:#222; margin-top:2px;">触屏：点击格子=当前模式 | 长按0.5秒=右键标记</div>
+  <main class="chat" id="chat">
+    <div class="msg bot">你好！我是基于智谱 GLM 的问答助手，把你的问题发给我吧。</div>
+  </main>
+  <form class="input-bar" id="form">
+    <textarea id="input" rows="1" placeholder="输入你的问题（Enter 发送，Shift+Enter 换行）"></textarea>
+    <button id="send" type="submit">发送</button>
+  </form>
+  <p class="status" id="status"></p>
 </div>
-
 <script>
-  (function() {
-    /* ========== 游戏配置 ========== */
-    const ROWS = 9;
-    const COLS = 9;
-    const TOTAL_MINES = 10;
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const statusEl = document.getElementById('status');
+  const form = document.getElementById('form');
+  const connDot = document.getElementById('conn-dot');
+  const connText = document.getElementById('conn-text');
+  const connBanner = document.getElementById('conn-banner');
+  const retryBtn = document.getElementById('retry-btn');
 
-    /* ========== DOM 元素 ========== */
-    const gridEl = document.getElementById('minesweeper-grid');
-    const mineCounterEl = document.getElementById('mine-counter');
-    const timerDisplayEl = document.getElementById('timer-display');
-    const resetButton = document.getElementById('reset-button');
-    const scoreDisplayEl = document.getElementById('score-display');
-    const modeLeftBtn = document.getElementById('mode-left-btn');
-    const modeRightBtn = document.getElementById('mode-right-btn');
+  // ===== 后端地址配置 =====
+  // 推荐留空：与网页同源，直接用浏览器打开后端地址（如 http://127.0.0.1:8000）即可。
+  // 前后端分离部署时改成完整地址，例如 'http://192.168.1.100:8000'。
+  const API_BASE = '';
+  // 双击本地文件（file://）且未配置地址时，自动指向本机后端
+  const API_BASE_EFFECTIVE = API_BASE || (location.protocol === 'file:' ? 'http://1xsever.w1.luyouxia.net' : '');
 
-    /* ========== 游戏状态变量 ========== */
-    let board = [];                 // 二维数组: { mine, revealed, flagged, adjacentMines }
-    let gameActive = false;
-    let gameOver = false;
-    let gameWin = false;
-    let minesPlaced = false;       // 首次点击后布雷
-    let flagsPlaced = 0;
-    let timerInterval = null;
-    let secondsElapsed = 0;
-    let firstClickDone = false;
+  const HEALTH_TIMEOUT_MS = 5000;    // 健康检查超时
+  const HEALTH_INTERVAL_MS = 30000;  // 后台轮询间隔
 
-    // 触控辅助：当前触摸模式 'left' 或 'right'
-    let touchMode = 'left';        // left: 点击视为左键； right: 点击视为右键
+  let sending = false;
+  let keyWarned = false;
+  let typingEl = null;
 
-    // 长按检测
-    let longPressTimer = null;
-    let touchStartRow = null;
-    let touchStartCol = null;
-    const LONG_PRESS_DURATION = 500;
+  function addMessage(kind, text) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + kind;
+    div.textContent = text;  // textContent 渲染，防 XSS，不解析 HTML
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
 
-    /* ========== 积分管理 (localStorage) ========== */
-    const STORAGE_KEY = 'minesweeper_score';
+  function setStatus(text, level) {
+    statusEl.textContent = text || '';
+    statusEl.className = 'status' + (level ? ' ' + level : '');
+  }
 
-    function getScore() {
+  function setConnState(state, label) {
+    connDot.className = 'conn-dot ' + state;
+    connText.textContent = label || '';
+    connBanner.classList.toggle('hidden', state !== 'off');
+  }
+
+  function showTyping() {
+    hideTyping();
+    const div = document.createElement('div');
+    div.className = 'msg bot typing';
+    div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    typingEl = div;
+  }
+
+  function hideTyping() {
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+  }
+
+  // 健康检查：带重试退避；silent 模式用于后台轮询（不打扰用户）
+  async function checkHealth(retries = 3, silent = false) {
+    if (!silent) setConnState('wait', '连接中…');
+    for (let i = 0; i < retries; i++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
       try {
-        const val = localStorage.getItem(STORAGE_KEY);
-        return val ? parseInt(val, 10) : 0;
-      } catch (e) {
-        return 0;
-      }
-    }
-
-    function updateScore(delta) {
-      try {
-        const current = getScore();
-        const newScore = Math.max(0, current + delta); // 不低于0
-        localStorage.setItem(STORAGE_KEY, newScore);
-        scoreDisplayEl.textContent = newScore;
-      } catch (e) {
-        console.warn('积分更新失败', e);
-      }
-    }
-
-    function refreshScoreDisplay() {
-      scoreDisplayEl.textContent = getScore();
-    }
-
-    /* ========== 工具函数 ========== */
-    function formatNumber(num, digits = 3) {
-      return String(num).padStart(digits, '0').slice(0, digits);
-    }
-
-    function updateMineCounter() {
-      const remaining = TOTAL_MINES - flagsPlaced;
-      mineCounterEl.textContent = formatNumber(remaining, 3);
-    }
-
-    function stopTimer() {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-    }
-
-    function startTimer() {
-      if (timerInterval) stopTimer();
-      secondsElapsed = 0;
-      timerDisplayEl.textContent = formatNumber(0, 3);
-      timerInterval = setInterval(() => {
-        secondsElapsed++;
-        timerDisplayEl.textContent = formatNumber(secondsElapsed, 3);
-      }, 1000);
-    }
-
-    /* ========== 初始化空棋盘 ========== */
-    function createEmptyBoard() {
-      return Array(ROWS).fill().map(() => Array(COLS).fill().map(() => ({
-        mine: false,
-        revealed: false,
-        flagged: false,
-        adjacentMines: 0
-      })));
-    }
-
-    /* ========== 随机布雷 (首次点击安全) ========== */
-    function placeMines(excludeRow, excludeCol) {
-      // 重置所有雷标记
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          board[r][c].mine = false;
-        }
-      }
-
-      // 计算排除区域：点击位置及其周围8格
-      const safeZone = new Set();
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          const nr = excludeRow + dr;
-          const nc = excludeCol + dc;
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-            safeZone.add(`${nr},${nc}`);
+        const res = await fetch(API_BASE_EFFECTIVE + '/api/health', { signal: ctrl.signal });
+        const h = await res.json();
+        if (h.key_configured) {
+          setConnState('ok', '在线 · ' + h.model);
+          if (!silent) setStatus('当前模型：' + h.model + ' · 每分钟最多 ' + h.rate_limit_per_minute + ' 次');
+        } else {
+          setConnState('ok', '在线 · 未配置 Key');
+          if (!keyWarned) {
+            keyWarned = true;
+            addMessage('error', '⚠ 提示：后端未配置 API Key（.env 的 ZHIPU_API_KEY 为空），当前无法回答问题。');
           }
         }
-      }
-
-      // 生成所有可能位置并排除安全区
-      const candidates = [];
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (!safeZone.has(`${r},${c}`)) {
-            candidates.push({ r, c });
-          }
-        }
-      }
-
-      // 随机挑选 TOTAL_MINES 个位置
-      const shuffled = candidates.sort(() => Math.random() - 0.5);
-      const minesToPlace = Math.min(TOTAL_MINES, shuffled.length);
-      for (let i = 0; i < minesToPlace; i++) {
-        const { r, c } = shuffled[i];
-        board[r][c].mine = true;
-      }
-
-      // 计算相邻雷数
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (board[r][c].mine) {
-            board[r][c].adjacentMines = -1;
-          } else {
-            let count = 0;
-            for (let dr = -1; dr <= 1; dr++) {
-              for (let dc = -1; dc <= 1; dc++) {
-                if (dr === 0 && dc === 0) continue;
-                const nr = r + dr, nc = c + dc;
-                if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc].mine) {
-                  count++;
-                }
-              }
-            }
-            board[r][c].adjacentMines = count;
-          }
-        }
-      }
-      minesPlaced = true;
-    }
-
-    /* ========== 递归展开空白区域 ========== */
-    function expandEmptyCells(row, col) {
-      const queue = [{ r: row, c: col }];
-      const visited = new Set();
-      
-      while (queue.length > 0) {
-        const { r, c } = queue.shift();
-        const key = `${r},${c}`;
-        if (visited.has(key)) continue;
-        visited.add(key);
-
-        const cell = board[r][c];
-        if (cell.revealed || cell.flagged || cell.mine) continue;
-
-        // 揭开当前格
-        cell.revealed = true;
-
-        // 如果是数字，不继续展开
-        if (cell.adjacentMines > 0) continue;
-
-        // 空白格：将周围未揭开且非雷非旗的格子加入队列
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = r + dr, nc = c + dc;
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-              const neighbor = board[nr][nc];
-              if (!neighbor.revealed && !neighbor.flagged && !neighbor.mine) {
-                queue.push({ r: nr, c: nc });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    /* ========== 检查胜利条件 ========== */
-    function checkVictory() {
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const cell = board[r][c];
-          // 胜利：所有非雷格子都已揭开
-          if (!cell.mine && !cell.revealed) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    function handleVictory() {
-      gameActive = false;
-      gameOver = true;
-      gameWin = true;
-      stopTimer();
-      // 自动标记所有雷为旗子（美观）
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (board[r][c].mine && !board[r][c].flagged) {
-            board[r][c].flagged = true;
-            flagsPlaced++;
-          }
-        }
-      }
-      updateMineCounter();
-      renderGrid();
-      updateScore(1);
-      resetButton.textContent = '😎';
-      alert('🎉 恭喜！你赢了！积分 +1');
-    }
-
-    function handleGameOver(clickedRow, clickedCol) {
-      gameActive = false;
-      gameOver = true;
-      gameWin = false;
-      stopTimer();
-      // 显示所有雷
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (board[r][c].mine) {
-            board[r][c].revealed = true;
-          }
-        }
-      }
-      renderGrid();
-      updateScore(-1);
-      resetButton.textContent = '😵';
-      alert('💥 踩到雷了！游戏结束，积分 -1');
-    }
-
-    /* ========== 左键点击逻辑 ========== */
-    function leftClick(row, col) {
-      if (!gameActive || gameOver) return;
-      const cell = board[row][col];
-      if (cell.revealed || cell.flagged) return;
-
-      // 首次点击处理：布雷并开始计时
-      if (!minesPlaced) {
-        placeMines(row, col);
-        startTimer();
-        firstClickDone = true;
-      }
-
-      if (cell.mine) {
-        handleGameOver(row, col);
         return;
+      } catch (e) {
+        if (i < retries - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+      } finally {
+        clearTimeout(timer);
       }
+    }
+    setConnState('off', '后端离线');
+    if (!silent && !statusEl.textContent) setStatus('无法连接到后端 ' + API_BASE_EFFECTIVE, 'err');
+  }
 
-      // 揭开当前格
-      if (cell.adjacentMines === 0) {
-        expandEmptyCells(row, col);
+  async function send() {
+    const text = input.value.trim();
+    if (!text || sending) return;
+    addMessage('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+    sending = true;
+    sendBtn.disabled = true;
+    sendBtn.classList.add('loading');
+    setStatus('思考中…');
+    showTyping();
+    try {
+      const res = await fetch(API_BASE_EFFECTIVE + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        addMessage('bot', data.reply || '（空回答）');
+        setStatus('');
       } else {
-        cell.revealed = true;
+        let msg = (data && (data.error || data.detail)) || '请求失败（HTTP ' + res.status + '）';
+        if (typeof msg === 'object') msg = JSON.stringify(msg);
+        if (res.status === 429 && data && data.retry_after_seconds) {
+          msg += '，约 ' + data.retry_after_seconds + ' 秒后可重试';
+        }
+        addMessage('error', '⚠ ' + msg);
+        setStatus(msg, 'err');
       }
-
-      renderGrid();
-
-      if (checkVictory()) {
-        handleVictory();
-      }
+    } catch (e) {
+      const t = '⚠ 无法连接后端（' + API_BASE_EFFECTIVE + '）：请确认后端已启动、地址端口正确、防火墙已放行。';
+      addMessage('error', t);
+      setStatus(t.slice(2), 'err');
+      setConnState('off', '后端离线');
+    } finally {
+      hideTyping();
+      sending = false;
+      sendBtn.disabled = false;
+      sendBtn.classList.remove('loading');
+      input.focus();
     }
+  }
 
-    /* ========== 右键/标记逻辑 ========== */
-    function rightClick(row, col) {
-      if (!gameActive || gameOver) return;
-      const cell = board[row][col];
-      if (cell.revealed) return;
+  form.addEventListener('submit', (e) => { e.preventDefault(); send(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+  });
+  retryBtn.addEventListener('click', () => checkHealth(2));
+  window.addEventListener('online', () => checkHealth(2));
+  window.addEventListener('offline', () => setConnState('off', '网络离线'));
 
-      // 如果还未布雷，不允许标记（但可以允许，不影响）
-      if (!minesPlaced) {
-        // 首次点击前标记：允许但不影响布雷逻辑
-      }
+  if (location.protocol === 'file:' && !API_BASE) {
+    addMessage('error', '⚠ 提示：当前是双击打开的本地文件，已自动连接 http://zz.frp.one:55655。建议直接在浏览器地址栏访问该地址。');
+  }
 
-      if (cell.flagged) {
-        cell.flagged = false;
-        flagsPlaced--;
-      } else {
-        // 不能超过总雷数（但允许超过，只是计数器负值？传统扫雷限制标记数不超过总雷数）
-        if (flagsPlaced >= TOTAL_MINES) {
-          // 可选：禁止标记或允许，这里遵循传统：不允许再标记
-          return;
-        }
-        cell.flagged = true;
-        flagsPlaced++;
-      }
-
-      updateMineCounter();
-      renderGrid();
-
-      // 标记后检查胜利（可能所有雷已正确标记且其他格子已开）
-      if (checkVictory()) {
-        handleVictory();
-      }
-    }
-
-    /* ========== 双击/同时点击：快速展开 ========== */
-    function chordClick(row, col) {
-      if (!gameActive || gameOver) return;
-      const cell = board[row][col];
-      if (!cell.revealed || cell.adjacentMines <= 0) return;
-
-      // 计算周围旗子数量
-      let flagCount = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = row + dr, nc = col + dc;
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc].flagged) {
-            flagCount++;
-          }
-        }
-      }
-
-      if (flagCount !== cell.adjacentMines) return; // 不匹配不操作
-
-      // 展开周围未标记且未揭开的格子
-      let hitMine = false;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = row + dr, nc = col + dc;
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-            const neighbor = board[nr][nc];
-            if (neighbor.revealed || neighbor.flagged) continue;
-            if (neighbor.mine) {
-              hitMine = true;
-              neighbor.revealed = true; // 显示爆炸位置
-            } else {
-              // 安全格子，递归展开
-              if (neighbor.adjacentMines === 0) {
-                expandEmptyCells(nr, nc);
-              } else {
-                neighbor.revealed = true;
-              }
-            }
-          }
-        }
-      }
-
-      if (hitMine) {
-        handleGameOver(row, col);
-      } else {
-        renderGrid();
-        if (checkVictory()) {
-          handleVictory();
-        }
-      }
-    }
-
-    /* ========== 渲染网格 ========== */
-    function renderGrid() {
-      gridEl.innerHTML = '';
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const cell = board[r][c];
-          const cellDiv = document.createElement('div');
-          cellDiv.className = 'cell';
-          cellDiv.dataset.row = r;
-          cellDiv.dataset.col = c;
-
-          if (cell.revealed) {
-            cellDiv.classList.add('revealed');
-            if (cell.mine) {
-              cellDiv.innerHTML = '<span class="mine-icon">💣</span>';
-            } else if (cell.adjacentMines > 0) {
-              cellDiv.textContent = cell.adjacentMines;
-              cellDiv.classList.add(`color${cell.adjacentMines}`);
-            }
-          } else if (cell.flagged) {
-            cellDiv.innerHTML = '<span class="flag-icon">🚩</span>';
-          }
-
-          gridEl.appendChild(cellDiv);
-        }
-      }
-    }
-
-    /* ========== 重置游戏 ========== */
-    function resetGame() {
-      stopTimer();
-      board = createEmptyBoard();
-      gameActive = true;
-      gameOver = false;
-      gameWin = false;
-      minesPlaced = false;
-      flagsPlaced = 0;
-      secondsElapsed = 0;
-      firstClickDone = false;
-      timerDisplayEl.textContent = formatNumber(0, 3);
-      updateMineCounter();
-      resetButton.textContent = '😊';
-      renderGrid();
-    }
-
-    /* ========== 事件绑定 ========== */
-    function setupEventListeners() {
-      // 鼠标事件（桌面端）
-      gridEl.addEventListener('click', (e) => {
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-        const row = parseInt(cell.dataset.row, 10);
-        const col = parseInt(cell.dataset.col, 10);
-        if (isNaN(row) || isNaN(col)) return;
-        e.preventDefault();
-        leftClick(row, col);
-      });
-
-      gridEl.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-        const row = parseInt(cell.dataset.row, 10);
-        const col = parseInt(cell.dataset.col, 10);
-        if (isNaN(row) || isNaN(col)) return;
-        rightClick(row, col);
-      });
-
-      // 双击/同时左右键：通过辅助检测（鼠标中键或同时按下？简化：双击数字格作为chord）
-      gridEl.addEventListener('dblclick', (e) => {
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-        const row = parseInt(cell.dataset.row, 10);
-        const col = parseInt(cell.dataset.col, 10);
-        if (isNaN(row) || isNaN(col)) return;
-        e.preventDefault();
-        chordClick(row, col);
-      });
-
-      // 触控事件
-      gridEl.addEventListener('touchstart', (e) => {
-        const cell = e.target.closest('.cell');
-        if (!cell) return;
-        const row = parseInt(cell.dataset.row, 10);
-        const col = parseInt(cell.dataset.col, 10);
-        if (isNaN(row) || isNaN(col)) return;
-        e.preventDefault();
-
-        touchStartRow = row;
-        touchStartCol = col;
-
-        // 启动长按定时器
-        if (longPressTimer) clearTimeout(longPressTimer);
-        longPressTimer = setTimeout(() => {
-          if (touchStartRow === row && touchStartCol === col) {
-            // 长按触发右键
-            rightClick(row, col);
-            // 重置长按状态
-            touchStartRow = null;
-            touchStartCol = null;
-            longPressTimer = null;
-          }
-        }, LONG_PRESS_DURATION);
-      });
-
-      gridEl.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        if (longPressTimer) {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        }
-
-        if (touchStartRow !== null && touchStartCol !== null) {
-          const row = touchStartRow;
-          const col = touchStartCol;
-          touchStartRow = null;
-          touchStartCol = null;
-
-          // 根据当前触摸模式决定行为
-          if (touchMode === 'left') {
-            leftClick(row, col);
-          } else if (touchMode === 'right') {
-            rightClick(row, col);
-          }
-        }
-      });
-
-      gridEl.addEventListener('touchmove', (e) => {
-        // 移动取消长按
-        if (longPressTimer) {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        }
-        touchStartRow = null;
-        touchStartCol = null;
-      });
-
-      // 重置按钮
-      resetButton.addEventListener('click', resetGame);
-      resetButton.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        resetGame();
-      });
-
-      // 触摸模式切换
-      modeLeftBtn.addEventListener('click', () => {
-        touchMode = 'left';
-        modeLeftBtn.classList.add('active-mode');
-        modeRightBtn.classList.remove('active-mode');
-      });
-      modeRightBtn.addEventListener('click', () => {
-        touchMode = 'right';
-        modeRightBtn.classList.add('active-mode');
-        modeLeftBtn.classList.remove('active-mode');
-      });
-    }
-
-    /* ========== 初始化 ========== */
-    function init() {
-      refreshScoreDisplay();
-      resetGame();
-      setupEventListeners();
-    }
-
-    // 启动一切
-    init();
-  })();
+  checkHealth();
+  setInterval(() => { if (!sending) checkHealth(1, true); }, HEALTH_INTERVAL_MS);
 </script>
 </body>
 </html>
